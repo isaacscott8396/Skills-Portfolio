@@ -7,31 +7,56 @@ names(mpg)
 
 #Scatter plots and trend lines. 
 ggplot(data = mpg, mapping = aes(x=displ, y=hwy))+
-  geom_point(size=3)
+  geom_point(size=3)+
+  theme_minimal()+
+  labs(title = "Engine Displacement vs Highway mpg")+
+  xlab(label = "Engine Displacement")+
+  ylab(label = "Highway mpg")
 #Scatter plot showing engine displacement (displ) vs highway miles per gallon (hwy).
 
 ggplot(data = mpg, mapping = aes(x=displ, y=hwy))+
   geom_point(size=3, position = "jitter")
+  theme_minimal()+
+  labs(title = "Engine Displacement vs Highway mpg")+
+  xlab(label = "Engine Displacement")+
+  ylab(label = "Highway mpg")
 #jittering the points so that all data entries can be plotted and minimizing overlap.
 
 
 ggplot(data = mpg, mapping = aes(x=displ, y=hwy))+
   geom_point(size=3)+
+  theme_minimal()+
+  labs(title = "Engine Displacement vs Highway mpg")+
+  xlab(label = "Engine Displacement")+
+  ylab(label = "Highway mpg")+
   geom_smooth(se=F)
+
 #Scatter plot accompanied by a smooth trend line. 
 
 ggplot(data = mpg)+
   geom_point(size=3, mapping = aes(x = displ, y = hwy, colour = drv))+
+  theme_minimal()+
+  labs(title = "Engine Displacement vs Highway mpg")+
+  xlab(label = "Engine Displacement")+
+  ylab(label = "Highway mpg")+
   geom_smooth(mapping = aes(x = displ, y= hwy), se=F)
 #The same thing, but with the scatter plots colour coded by the drive train (drv).
 
 ggplot(data = mpg, mapping = aes(x = displ, y = hwy, colour = drv))+
   geom_point(size=3)+
+  theme_minimal()+
+  labs(title = "Engine Displacement vs Highway mpg")+
+  xlab(label = "Engine Displacement")+
+  ylab(label = "Highway mpg")+
   geom_smooth(se=F)
 #This time both the trend line and the points on the scatter plot are colour-coded to the drv.
 
 ggplot(data = mpg, mapping = aes(x=displ, y=hwy))+
   geom_point(mapping = aes(colour=drv), size=3)+
+  theme_minimal()+
+  labs(title = "Engine Displacement vs Highway mpg")+
+  xlab(label = "Engine Displacement")+
+  ylab(label = "Highway mpg")+
   geom_smooth(mapping = aes(linetype=drv), se=F)
 #This time on the geom_smooth the drv is reflected by the line type and not by colour-coding.
 
@@ -41,7 +66,10 @@ ggplot(data = mpg, mapping = aes(x=displ, y=hwy))+
 #Box Plots
 
 ggplot(data = mpg, mapping = aes(x=hwy, y = class))+
-  geom_boxplot()
+  geom_boxplot()+
+  labs(title = "Boxplots of Highway mpg for Each Class of Vehicle")+
+  xlab(label = "Highway mpg")+
+  ylab(label = "Class of Vehicle")
 #Box plots showing the highway miles per gallon (hwy) for each (class) of vehicle.
 
 
@@ -49,17 +77,25 @@ ggplot(data = mpg, mapping = aes(x=hwy, y = class))+
 #Bar Charts
 
 ggplot(data = mpg)+ 
+  labs(title = "Bar Charts of The Amount of Vehicles in each Class", fill = "Class of Vehicle")+
+  xlab(label = "Class of Vehicle")+
+  ylab(label = "n")+
   geom_bar(mapping = aes(x = class, fill = class))+
   coord_flip()
 #Looking at the number of cars that are in each class.
 
 ggplot(data = mpg)+ 
-  geom_bar(mapping = aes(x = class, fill = drv))+
+  labs(title = "Bar Charts of The Amount of Vehicles in each Class \n Broken Down into Drive Trains", fill = "Drive Train")+
+  xlab(label = "Class of Vehicle")+
+  ylab(label = "n")+  geom_bar(mapping = aes(x = class, fill = drv))+
   coord_flip()
 #Looking at the number of cars in each class but breaking each down into drv type. 
 
 
 ggplot(data = mpg)+ 
+  labs(title = "Bar Charts of The Amount of Vehicles in each Class \n Broken Down into Separate Bars for Drive Train", fill = "Class of Vehicle")+
+  xlab(label = "Class of Vehicle")+
+  ylab(label = "n")+
   geom_bar(
     mapping = aes(x = class, fill = drv),
     position = "dodge"
@@ -77,13 +113,13 @@ bar <- ggplot(data = mpg)+
     width = 1
   )+
   theme(aspect.ratio = 1)+
-  labs(x = NULL, y = NULL)
+  labs(x = NULL, y = NULL)+
+  
 Bar_Chart <- bar + coord_flip()
 Pie_Chart <- bar+coord_polar()
 
 Fig1 <- ggarrange(Bar_Chart, Pie_Chart,
-                  labels = c("Bar", "Pie"),
+                  labels = c("Bar Chart", "Pie Chart"),
                   ncol = 2, nrow = 1)
-  
 Fig1  
 #A bar chart and a pie chart showing the breakdowns of different drv types by manufacturer.
