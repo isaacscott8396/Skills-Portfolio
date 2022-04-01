@@ -2,8 +2,13 @@ library(ggplot2)
 library(dplyr)
 attach(mpg)
 library(ggpubr)
+library(viridis)
 theme_set(theme_pubr())
 names(mpg)
+
+#-----
+# Basic Use of ggplot to Produce Plots of Data
+#-----
 
 #Scatter plots and trend lines. 
 ggplot(data = mpg, mapping = aes(x=displ, y=hwy))+
@@ -123,3 +128,69 @@ Fig1 <- ggarrange(Bar_Chart, Pie_Chart,
                   ncol = 2, nrow = 1)
 Fig1  
 #A bar chart and a pie chart showing the breakdowns of different drv types by manufacturer.
+
+
+
+
+
+
+
+#-----
+# Plots Using Aggregation
+#-----
+
+AVG_hwy <- mpg %>% 
+  group_by(manufacturer) %>% 
+  summarise(
+    average_highway_mpg = mean(hwy, na.rm = T),
+    n = n()
+  )
+View(AVG_hwy)
+
+ggplot(data = AVG_hwy, mapping = aes(x = manufacturer, y = average_highway_mpg))+
+  geom_col(mapping = aes(fill = manufacturer), width = 0.5, show.legend = F)+
+  labs(title = "Bar Chart Showing the Average Highway mpg of each Manufacturer")+
+  xlab(label = "Manufacturer")+
+  ylab(label = "Average Highway mpg")+
+  scale_fill_viridis_d()+
+  coord_flip()
+
+
+ggplot(data = mpg, mapping = aes(x = displ, y = hwy))+
+  geom_point()+
+  geom_smooth(method = "lm", se = F)
+
+#Plotting hwy and displ variables to see if there are any outliers present within the data. 
+
+
+x_bar <- mean(mpg$hwy)
+#Finding sample mean for the distribution of hwy.
+s_hwy <- sd(mpg$hwy)
+#Finding the sample standard deviation of hwy.
+se_hwy <- qnorm(0.975)*s_hwy/sqrt(length(mpg$hwy))
+#finding the accompanying standard error (assuming Normality)
+upper <- x_bar + se_hwy
+#upper 95% confidence interval
+lower <- x_bar - se_hwy
+#lower 95% confidence interval
+
+
+#Eliminating values +/- 3sds from mean
+
+limit_upper <- x_bar + 3*s_hwy
+limit_upper <- as.numeric(limit_upper)
+limit_lower <- x_bar - 3*s_hwy
+limit_lower <- as.numeric(limit_lower)
+#setting the upper and lower cutoff limits of 3 standard deviations away from the mean.
+
+mpg$hwy <- as.factor(mpg$hwy)
+mpg$hwy <- as.numeric(mpg$hwy)
+trimmed_mpg <- filter(mpg, hwy > limit_lower, hwy < limit_upper)
+#trimming the data, removing the datapoints that fall outisde the outlier values.
+
+ggplot(data = trimmed_mpg, mapping = aes(x = displ, y = hwy))+ 
+  geom_point()+
+  geom_smooth(method = "lm", se = F)
+#Plotting the new data. 
+
+
