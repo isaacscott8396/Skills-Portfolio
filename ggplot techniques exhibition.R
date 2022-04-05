@@ -7,7 +7,7 @@ theme_set(theme_pubr())
 names(mpg)
 
 #-----
-# Basic Use of ggplot to Produce Plots of Data
+# Basic use of ggplot to Produce Plots of Data
 #-----
 
 #Scatter plots and trend lines. 
