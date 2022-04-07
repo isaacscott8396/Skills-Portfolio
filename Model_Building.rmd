@@ -1,0 +1,367 @@
+---
+title: "Model Building"
+author: "Isaac Scott"
+date: '2022-04-04'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE,
+                      warning = F,
+                      message = F,
+                      tidy.opts=list(width.cutoff=60),
+                      tidy=TRUE,
+                      fig.width=6, 
+                      fig.height=4)
+
+library(readr)
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(gridExtra)
+library(grid)
+library(lattice)
+library(caret)
+library(leaps)
+library(car)
+library(lmtest)
+library(sandwich)
+library(tinytex)
+library(formatR)
+library(dgof)
+library(r2symbols)
+jaybob <- read_csv("jaybob.csv", 
+                   col_types = cols(`Car ID` = col_character(), 
+                                    Price = col_number(), 
+                                    Age = col_integer(), 
+                                    `Pink slip` = col_logical(), 
+                                    `Sold?` = col_logical()))
+
+attach(jaybob)
+
+```
+
+## Model Building: Modelling the Price of Cars from the "jaybob" Dataset.
+
+### Model 1
+
+$$Price_{i} \sim \beta_{0} \ + \beta_{1}Age_{i} \ + \  \beta_{2}Odometer_{i}$$
+
+
+
+To start with, we model Price just with two variables: Age and Odometer.
+
+\vspace{0.5cm}
+
+
+```{r}
+
+model1 <- lm(Price ~ Age + Odometer, data = jaybob)
+
+
+```
+
+
+```{r}
+
+coef(model1)
+
+```
+
+```{r}
+
+summary(model1)
+
+```
+
+\vspace{0.5cm}
+
+As we can see from the p-values, all the p-values seem significant, but the fit is bad, as evidenced by the Adjusted R^2^ value of 0.1536.
+
+This may be down to the relationship of the two variables to price. To find out if this is the case we must plot them.
+
+```{r}
+ggplot(data=jaybob, mapping = aes(x=Age, y=Price), main = "Price vs Age")+
+  labs(title = "Price vs Age")+
+  geom_point()+
+  geom_smooth(se=F)+
+  theme_minimal()
+```
+
+```{r}
+ggplot(data=jaybob, mapping = aes(x=Odometer, y=Price))+
+  labs(title = "Price vs Odometer")+
+  geom_point()+
+  geom_smooth(se=F)+
+  theme_minimal()
+
+```
+
+We can see two things from these plots. 
+
+From the first plot, we can see that the relationship between the Age and Price appears to be a non-linear one.
+It resembles a parabolic curve around age where price decreases with age up to an age of 20 then price begins to increase again. 
+
+We can also see that the relationship between Odometer and Price is non-linear.
+This is evidenced by a sharp decrease in price through lower odometer values before a more gradual price decline at higher odometer values.
+
+In order to improve the model, we must transform the variables within Model 1 to have a more linear relationship with Price.
+
+### Model 2
+$$Price_{i} \sim \beta_{0} \ + \beta_{1}\sqrt{|(Age_{i} - \bar{Age})|} + \beta_{2}(1/(Odometer_{i}))$$
+ 
+
+In the second model, we include a transformed Age variable, as well as inverting the Odometer variable. The transformation on the Age variable first re-centers Age around 0 and takes the absolute value of this. We can then square root these new values, in an attempt to make the relationship more linear. Throughout the rest of the report, I will refer to this variable as AgeT for brevity.
+
+
+
+
+```{r}
+jaybob <- jaybob %>% 
+  mutate(AgeTransformed = sqrt(abs(Age-mean(Age))),
+         Inv_Odometer = 1/Odometer)
+attach(jaybob)
+
+model2 <- lm(Price ~ AgeTransformed + Inv_Odometer, data = jaybob)
+```
+
+```{r}
+ggplot(data = jaybob, mapping = aes(x=AgeTransformed, y = Price))+
+  labs(title = "Price vs AgeT")+
+  geom_point()+
+  geom_smooth(se=F)+
+  theme_minimal()
+
+```
+
+```{r}
+ggplot(data = jaybob, mapping = aes(x=Inv_Odometer, y = Price))+
+  labs(title = "Price vs Odometer^-1")+
+  geom_point()+
+  geom_smooth(se=F, method='gam')+
+  xlim(0,1)+
+  theme_minimal()
+```
+
+\vspace{0.5cm}
+
+We can see from the plots of both AgeT and Odometer^-1^ vs Price that the relationships between the two explanatory variables are now much more linear than before.
+
+There are still some concerns with the relationship between the Odometer^-1^ variable and the response variable, but we proceed with assessing the model fit.
+
+\vspace{0.5cm}
+
+```{r}
+summary(model2)
+```
+
+
+\vspace{0.5cm}
+
+
+As we can see, the p-values indicate that all the variables are significant again, but this time our Adjusted R^2^ value is much higher: 0.4268, indicating a much better fit for Model 2 when compared to Model 1.
+
+We may be able to improve on the model fit though by doing a different transformation to the Odometer variable: taking its logarithm.
+
+### Model 3
+
+$$Price_{i} \sim \beta_{0} \ + \beta_{1}AgeT_{i} + \beta_{2}Ln(Odometer_{i})$$
+
+```{r}
+
+ggplot(data = jaybob, mapping = aes(x=Odometer))+
+  labs(title = "A Histogram of the Odometer Mileage Data", x="Odometer Mileage")+
+  geom_histogram(binwidth = 15)+
+  theme_minimal()
+
+```
+
+We can see from the above plot that the distribution of Odometer mileage is very heavily right-skewed, possibly compromising the assumption of linearity placed upon the variables within the model. In order to negate this skew, a good idea may be to transform the Odometer variable by taking the logarithm of it. 
+
+```{r}
+jaybob$Log_Odometer <- log(jaybob$Odometer)
+```
+
+
+
+```{r}
+
+ggplot(data = jaybob, mapping = aes(x = Log_Odometer))+
+  labs(title = "A Histogram of the Ln(Odometer Mileage) Data", x = "Ln(Odometer Mileage)")+
+  geom_histogram(binwidth = 0.5)+
+  theme_minimal()
+
+```
+
+```{r}
+
+ggplot(data = jaybob, mapping = aes(x = Log_Odometer, y = Price))+
+  labs(title = "Scatterplot of Ln(Odometer Mileage) vs Price", x = "Ln(Odometer Mileage)", y = "Price")+
+  geom_point()+
+  geom_smooth(se=F)+
+  theme_minimal()
+  
+
+```
+
+
+From the histogram of log(Odometer Mileage), we can see clearly that the data is now much more Normally distributed, and from the scatter plot we can see that the relationship between Ln(Odometer) and Price is much more linear in nature. Thus, we proceed with assessing the model fit.
+
+```{r}
+model3 <- lm(Price ~ AgeTransformed + Log_Odometer, data = jaybob)
+
+```
+
+```{r}
+summary(model3)
+```
+
+We can see again that this transformation improves the Adjusted R^2^ value of the model to 0.466, showing that the log transformation improves the fit as expected. We now move to checking how the other variables, "Pink Slip" and "Sold?" affect the fit of the model.
+
+### Model 4
+
+$$Price_{i} \sim \beta_{0} \ + \beta_{1}AgeT_{i} + \beta_{2}Ln(Odometer_{i}) \ + \ \beta_{3}(Pink Slip)_i$$
+Within Model 4, we include the categorical Pink Slip variable, and see how this affects the fit of the model. 
+
+```{r}
+model4 <- lm(Price ~ AgeTransformed + Log_Odometer + `Pink slip`, data = jaybob)
+summary(model4)
+
+```
+
+It would seem from the R^2^ score of 0.4729 that the fit of the model is improved by the inclusion of the Pink Slip variable. However, we see from the variable's p-value of 0.134979 that it is insignificant, so we do not include it within our model, as it may be causing overfitting.
+
+Next, we assess whether the "Sold?" variable has any meaningful effect on the fit of the model. 
+
+
+### Model 5
+
+$$Price_{i} \sim \beta_{0} \ + \beta_{1}AgeT_{i} + \beta_{2}Ln(Odometer_{i}) \ + \ \beta_{3}(Sold)_i$$
+
+
+```{r}
+model5 <- lm(Price ~ AgeTransformed + Log_Odometer + `Sold?`, data = jaybob)
+summary(model5)
+
+```
+
+Again within this model, we see the "Sold?" variable is insignificant, with an accompanying p-value of 0.446767. This means we can discard this variable, as even though it has a relatively strong R^2^ value of 0.4637, it may again lead to overfitting. 
+
+This means we select Model 3 as our most accurate model of Price from the "jaybob" data set. We then move to assessing the model assumptions are satisfied for this model.
+
+### Analysis of Residuals
+
+To thoroughly assess the goodness of fit for any model we must analyse the residuals.
+The following plot shows the fitted values against the residuals.
+The residuals should be normally distributed around 0 and have consistant variance across the range of fitted values.
+
+```{r}
+residualPlot(model3, quadratic=F)
+```
+
+We see from this residual plot that Model 3 seems to have some issue with the distribution of residuals.
+There appears to be differences in variance of the resdiuals as the fitted values inicrease, hinting at heteroscedasticity.
+As well as this the residuals do not appear to be normally distributed around 0.
+This would indicate that assumptions for a well fitted model do not hold. 
+
+#### Confirming heteroscedasticity.
+
+To further check the potential heteroscedasticity observed in the residuals plot, we can employ both the Breusch-Pagan and Goldfeldt-Quant tests.
+
+First, we look at the Goldfeldt-Quant test, with the null hypothesis that the model has homoscedasticity.
+
+```{r}
+gqtest(model3, order.by = ~AgeTransformed+Log_Odometer, data = jaybob, fraction = 20)
+
+```
+
+From this test we obtain a p-value of 0.981 which is greater than the required 0.05 to reject H~0~. Thus, from the Goldfeldt-Quant test, it would appear that we have homoscedasticity.
+
+
+We proceed to applying the Breusch-Pagan test, also with a null hypothesis that homoscedasticity is present within our model.
+
+```{r}
+bptest(model3)
+
+```
+
+Here, we obtain a p-value of 0.000000136, which is much less than than 0.05, indicating that we reject H~0~. That is, there is heteroscedasticity present within our model.
+
+With the residuals plot and the Breusch-Pagan indicating heteroscedasticity it is worth addressing this.
+To rectify this heteroscedasticity, we can apply weighted regression to our model.
+
+We apply our weighted regression, and then assess the model fit.
+
+```{r}
+wt <- 1 / lm(abs(model3$residuals) ~ model3$fitted.values)$fitted.values^2
+wls_model4 <- lm(Price ~ AgeTransformed + Log_Odometer, data = jaybob, weights = wt)
+summary(wls_model4)
+```
+
+We see from the weighted least squares regression that our Adjusted R^2^ value has decreased to 0.3883, as opposed to the previous 0.466, indicating that our use of a weighted model has not improved the fit. However, this is balanced by the fact that our model no longer exhibits heteroscedasticity. 
+
+```{r}
+residualPlot(wls_model4, quadratic=F)
+```
+
+### Assessing the Normality of Error Terms
+
+Assessing the Normality of the error terms in our model is of low priority as we have a large n for our data set. We test anyway though, for completion.
+
+We do this first by simply by plotting the residuals of the model.
+
+```{r}
+ggplot(data = jaybob, mapping = aes(x = model3$residuals))+
+  labs(title = 'Histogram of model residuals', x = 'residuals')+
+  geom_histogram(binwidth = 1000)+
+  theme_minimal()
+```
+
+From our plot we can see that the residuals appear to be Normally Distributed, which is encouraging.
+
+As a final check, we apply the Kolmogrov-Smirnov test, comparing the residuals to a Normal distribution and using a Null Hypothesis that the two samples are drawn from the same distribution.
+
+```{r}
+res3 <- resid(model3)
+ks.test(rnorm(1000), res3)
+```
+
+Applying this test we acquire a p-value of close to 0. This indicates that we reject H~0~, and that our error terms are not Normally distributed. 
+
+To rectify this lack of Normality, we can perform a log transformation to the dependent variable Price in our model, to produce the model below: 
+
+$$Ln(Price_{i}) \sim \beta_{0} \ + \beta_{1}AgeT_{i} + \beta_{2}Ln(Odometer_{i})$$
+We fit this model and observe the results. 
+
+```{r}
+jaybob <- jaybob %>% 
+  mutate(
+    Log_Price = log(Price)
+         )
+model6 <- lm(Log_Price ~ AgeTransformed + Log_Odometer, data = jaybob)
+summary(model6)
+
+```
+
+Here, there is not a drastic change in R^2^ value for the model, so we proceed to checking the Normality assumption again with the Kolmogrov-Smirnov test. 
+
+```{r}
+res6 <- resid(model6)
+ks.test(rnorm(1000), res6)
+```
+
+Here we can see that the p-value is 0.06927. Thus, H~0~ holds for our logarithmic model. 
+
+### Model Interpretation.
+
+```{r}
+summary(model6)
+```
+
+From the coefficients of Model 6, we can draw:
+
+For every year increase in AgeT, the value of Ln(Price) increases by 0.28856, meaning that the price increases by around $1334, holding the other variables constant.
+
+As the Odometer mileage increases by 1%, we see that the price decreases by 0.22947%, holding the other variables constant.
+
+
